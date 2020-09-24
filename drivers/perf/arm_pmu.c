@@ -630,11 +630,9 @@ static void cpu_pmu_free_irq(struct arm_pmu *cpu_pmu)
 
 	irq = platform_get_irq(pmu_device, 0);
 	if (irq > 0 && irq_is_percpu(irq)) {
-		get_online_cpus();
 		on_each_cpu_mask(&cpu_pmu->supported_cpus,
 				 cpu_pmu_disable_percpu_irq, &irq, 1);
 		free_percpu_irq(irq, &hw_events->percpu_pmu);
-		put_online_cpus();
 	} else {
 		for (i = 0; i < irqs; ++i) {
 			int cpu = i;
@@ -668,19 +666,16 @@ static int cpu_pmu_request_irq(struct arm_pmu *cpu_pmu, irq_handler_t handler)
 
 	irq = platform_get_irq(pmu_device, 0);
 	if (irq > 0 && irq_is_percpu(irq)) {
-		get_online_cpus();
 		err = request_percpu_irq(irq, handler, "arm-pmu",
 					 &hw_events->percpu_pmu);
 		if (err) {
 			pr_err("unable to request IRQ%d for ARM PMU counters\n",
 				irq);
-			put_online_cpus();
 			return err;
 		}
 
 		on_each_cpu_mask(&cpu_pmu->supported_cpus,
 				 cpu_pmu_enable_percpu_irq, &irq, 1);
-		put_online_cpus();
 	} else {
 		for (i = 0; i < irqs; ++i) {
 			int cpu = i;
@@ -703,18 +698,15 @@ static int cpu_pmu_request_irq(struct arm_pmu *cpu_pmu, irq_handler_t handler)
 					irq, cpu);
 				continue;
 			}
-			get_online_cpus();
 			err = request_irq(irq, handler,
 					  IRQF_NOBALANCING | IRQF_NO_THREAD, "arm-pmu",
 					  per_cpu_ptr(&hw_events->percpu_pmu, cpu));
 			if (err) {
 				pr_err("unable to request IRQ%d for ARM PMU counters\n",
 					irq);
-				put_online_cpus();
 				return err;
 			}
 			cpumask_set_cpu(cpu, &cpu_pmu->active_irqs);
-			put_online_cpus();
 		}
 	}
 
