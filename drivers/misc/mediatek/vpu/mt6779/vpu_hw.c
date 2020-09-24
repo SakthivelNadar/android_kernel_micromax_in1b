@@ -1137,7 +1137,7 @@ if (vvpu_index == 0xFF) {
 		LOG_ERR("wrong vvpu opp(%d), max(%d)",
 				vvpu_index, opps.count - 1);
 
-	} else if ((vvpu_index < opps.vvpu.index) ||
+	} else if ((vvpu_index <= opps.vvpu.index) ||
 			((vvpu_index > opps.vvpu.index) &&
 				(!opp_keep_flag)) ||
 				(mdla_get_opp() < opps.dsp.index) ||
@@ -1263,7 +1263,7 @@ if (vvpu_index == 0xFF) {
 	mutex_unlock(&opp_mutex);
 out:
 	LOG_INF("%s(%d)(%d/%d_%d)(%d/%d)(%d.%d.%d.%d)(%d/%d)(%d/%d/%d/%d)%d\n",
-		"opp_check",
+		"opp_check_v1",
 		core,
 		is_power_debug_lock,
 		vvpu_index,
