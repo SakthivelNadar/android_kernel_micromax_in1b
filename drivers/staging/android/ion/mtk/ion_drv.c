@@ -163,7 +163,7 @@ static int __ion_is_kernel_va(unsigned long va, size_t size)
  * @return 0 : invalid va
  * @return 1 : valid user va
  */
-static int __ion_is_user_va(unsigned long va, size_t size)
+int __ion_is_user_va(unsigned long va, size_t size)
 {
 	int ret = 0;
 	char data;
@@ -596,6 +596,45 @@ static long ion_sys_dma_op(struct ion_client *client,
 			   struct ion_dma_param *param, int from_kernel)
 {
 	long ret = 0;
+	enum ION_DMA_TYPE dma_type = param->dma_type;
+	int is_user_addr = __ion_is_user_va((unsigned long)param->va,
+					     (size_t)param->size);
+	//Address check
+	if (dma_type == ION_DMA_MAP_AREA_VA ||
+	    dma_type == ION_DMA_UNMAP_AREA_VA ||
+	    dma_type == ION_DMA_FLUSH_BY_RANGE_USE_VA) {
+		if ((dma_type == ION_DMA_MAP_AREA_VA ||
+		     dma_type == ION_DMA_UNMAP_AREA_VA) && !from_kernel) {
+			IONMSG("%s user:type%d-hdl%d-%p-va%lx-sz%zu-clt[%s]\n",
+			       __func__, dma_type, param->handle,
+			       param->kernel_handle,
+			       (unsigned long)param->va, (size_t)param->size,
+			       (*client->dbg_name) ?
+			       client->dbg_name : client->name);
+			return -EINVAL;
+		}
+		if (dma_type == ION_DMA_FLUSH_BY_RANGE_USE_VA &&
+		    !from_kernel && !is_user_addr) {
+			IONMSG("%s user:type%d-hdl%d-%p-va%lx-sz%zu-clt[%s]\n",
+			       __func__, dma_type, param->handle,
+			       param->kernel_handle,
+			       (unsigned long)param->va, (size_t)param->size,
+			       (*client->dbg_name) ?
+			       client->dbg_name : client->name);
+			return -EINVAL;
+		}
+		ret = __ion_is_kernel_va((unsigned long)param->va,
+					 (size_t)param->size);
+		if (unlikely(ret == 0)) {
+			IONMSG("%s %d:inv[%d]-hdl %d-%p-va%lx-sz%zu-clt[%s]\n",
+			       __func__, dma_type, from_kernel,
+			       param->handle, param->kernel_handle,
+			       (unsigned long)param->va, (size_t)param->size,
+			       (*client->dbg_name) ?
+			       client->dbg_name : client->name);
+			return -EINVAL;
+		}
+	}
 
 	switch (param->dma_type) {
 	case ION_DMA_MAP_AREA:

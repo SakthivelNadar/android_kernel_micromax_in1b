@@ -618,9 +618,14 @@ struct sg_table *m4u_create_sgtable(unsigned long va,
 	phys_addr_t pa;
 	struct scatterlist *sg;
 	struct page *page;
+	unsigned long va_align_end;
 
 	page_num = M4U_GET_PAGE_NUM(va, size);
 	va_align = round_down(va, PAGE_SIZE);
+	va_align_end = va_align + page_num * PAGE_SIZE;
+
+	if (va_align_end <= va_align)
+		goto err_out;
 
 	table = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
 	if (!table) {
@@ -643,8 +648,9 @@ struct sg_table *m4u_create_sgtable(unsigned long va,
 		"%s va=0x%lx, PAGE_OFFSET=0x%lx, VMALLOC_START=0x%lx, VMALLOC_END=0x%lx\n",
 		__func__, va, PAGE_OFFSET, VMALLOC_START, VMALLOC_END);
 
-	if (va < PAGE_OFFSET) {	/* from user space */
-		if (va >= VMALLOC_START && va <= VMALLOC_END) {	/* vmalloc */
+	if (va_align_end <= PAGE_OFFSET) {	/* from user space */
+		if (va_align >= VMALLOC_START && va_align_end <= VMALLOC_END) {
+		/* vmalloc */
 			M4ULOG_MID(" from user space vmalloc, va = 0x%lx", va);
 			for_each_sg(table->sgl, sg, table->nents, i) {
 				page = vmalloc_to_page((void *)(
@@ -657,6 +663,11 @@ struct sg_table *m4u_create_sgtable(unsigned long va,
 				}
 				sg_set_page(sg, page, PAGE_SIZE, 0);
 			}
+		} else if ((va_align >= VMALLOC_START &&
+				va_align_end > VMALLOC_END) ||
+			(va_align < VMALLOC_START &&
+				va_align_end >= VMALLOC_START)) {
+			goto err;
 		} else {
 			ret = m4u_create_sgtable_user(va_align, table);
 			if (ret) {
@@ -666,8 +677,12 @@ struct sg_table *m4u_create_sgtable(unsigned long va,
 				goto err;
 			}
 		}
-	} else {		/* from kernel space */
-		if (va >= VMALLOC_START && va <= VMALLOC_END) {	/* vmalloc */
+	} else {
+		if (va_align < PAGE_OFFSET)
+			goto err;
+	/* from kernel space */
+		if (va_align >= VMALLOC_START && va_align_end <= VMALLOC_END) {
+		/* vmalloc */
 			M4ULOG_MID(" from kernel space vmalloc, va = 0x%lx", va);
 			for_each_sg(table->sgl, sg, table->nents, i) {
 				page = vmalloc_to_page((void *)(
@@ -680,7 +695,13 @@ struct sg_table *m4u_create_sgtable(unsigned long va,
 				}
 				sg_set_page(sg, page, PAGE_SIZE, 0);
 			}
-		} else {	/* kmalloc to-do: use one entry sgtable. */
+		} else if ((va_align >= VMALLOC_START &&
+				va_align_end > VMALLOC_END) ||
+			(va_align < VMALLOC_START &&
+				va_align_end >= VMALLOC_START)) {
+			goto err;
+		} else {
+		/* kmalloc to-do: use one entry sgtable. */
 			for_each_sg(table->sgl, sg, table->nents, i) {
 				pa = virt_to_phys((void *)(
 					va_align + i * PAGE_SIZE));
@@ -693,8 +714,10 @@ struct sg_table *m4u_create_sgtable(unsigned long va,
 	return table;
 
 err:
+	M4UMSG("%s error va=0x%lx, size=%d\n", __func__, va, size);
 	sg_free_table(table);
 	kfree(table);
+err_out:
 	return ERR_PTR(-EFAULT);
 }
 

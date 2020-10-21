@@ -24,6 +24,7 @@
 #include <linux/vmalloc.h>
 #include "ion.h"
 #include "ion_priv.h"
+#include "mtk/mtk_ion.h"
 
 void *ion_heap_map_kernel(struct ion_heap *heap,
 			  struct ion_buffer *buffer)
@@ -40,6 +41,12 @@ void *ion_heap_map_kernel(struct ion_heap *heap,
 	if (!pages) {
 		IONMSG("%s vmalloc failed pages is null.\n", __func__);
 		return ERR_PTR(-ENOMEM);
+	}
+
+	if (heap->id == ION_HEAP_TYPE_MULTIMEDIA_MAP_MVA &&
+	    npages < table->nents) {
+		IONMSG("%s map_mva va not align.\n", __func__);
+		return ERR_PTR(-EINVAL);
 	}
 
 	if (buffer->flags & ION_FLAG_CACHED)

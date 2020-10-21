@@ -163,6 +163,18 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 		struct scatterlist *sg;
 		int i, j, k = 0;
 
+		if (heap->id == ION_HEAP_TYPE_MULTIMEDIA_MAP_MVA) {
+			int page_align_num = ((((unsigned long)align)
+					& (PAGE_SIZE - 1)) +
+					(len) + (PAGE_SIZE - 1)) >> 12;
+
+			if (page_align_num > num_pages) {
+				IONMSG("%s create buffer fail, va not align.\n",
+				       __func__);
+				ret = -EINVAL;
+				goto err1;
+			}
+		}
 		buffer->pages = vmalloc(sizeof(struct page *) * num_pages);
 		if (!buffer->pages) {
 			IONMSG("%s vamlloc failed pages is null.\n", __func__);
@@ -1081,6 +1093,12 @@ static int ion_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 		return -EINVAL;
 	}
 
+	if (buffer->heap->id == ION_HEAP_TYPE_MULTIMEDIA_MAP_MVA &&
+	    !sg_page(buffer->sg_table->sgl)) {
+		IONMSG("%s: failure mapping caused by null page\n",
+		       __func__);
+		return -EINVAL;
+	}
 	if (ion_buffer_fault_user_mappings(buffer)) {
 		vma->vm_flags |= VM_IO | VM_PFNMAP | VM_DONTEXPAND |
 							VM_DONTDUMP;
@@ -1349,14 +1367,16 @@ int ion_sync_for_device(struct ion_client *client, int fd)
 	buffer = dmabuf->priv;
 
 #ifdef CONFIG_MTK_ION
-	if (buffer->heap->type != (int)ION_HEAP_TYPE_FB)
+	if (buffer->heap->type != (int)ION_HEAP_TYPE_FB &&
+	    buffer->heap->id != (int)ION_HEAP_TYPE_MULTIMEDIA_MAP_MVA &&
+	    buffer->heap->type != (int)ION_HEAP_TYPE_MULTIMEDIA_SEC)
 		dma_sync_sg_for_device(g_ion_device->dev.this_device,
 				       buffer->sg_table->sgl,
 				       buffer->sg_table->nents,
 				       DMA_BIDIRECTIONAL);
 	else
-		pr_err("%s: can not support heap type(%d) to sync\n",
-		       __func__, buffer->heap->type);
+		IONMSG("%s: can not support heap %s type %d to sync\n",
+		       __func__, buffer->heap->name, buffer->heap->type);
 #endif
 
 	dma_buf_put(dmabuf);

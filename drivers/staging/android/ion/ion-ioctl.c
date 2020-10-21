@@ -21,6 +21,8 @@
 #include "ion.h"
 #include "ion_priv.h"
 #include "compat_ion.h"
+#include "mtk/mtk_ion.h"
+#include "mtk/ion_drv.h"
 
 union ion_ioctl_arg {
 	struct ion_fd_data fd;
@@ -95,6 +97,24 @@ long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case ION_IOC_ALLOC:
 	{
 		struct ion_handle *handle;
+
+		if (data.allocation.heap_id_mask ==
+		    ION_HEAP_MULTIMEDIA_MAP_MVA_MASK &&
+			(!__ion_is_user_va(data.allocation.align,
+					   data.allocation.len))) {
+			IONMSG(
+				"ION_IOC_ALLOC  from user. invalid align = %zu.\n",
+				data.allocation.align);
+			return -ENOTTY;
+		}
+
+		if (data.allocation.heap_id_mask ==
+		    ION_HEAP_MULTIMEDIA_PA2MVA_MASK) {
+			IONMSG(
+				"ION_IOC_ALLOC from user. invalid heap = %d.\n",
+				data.allocation.heap_id_mask);
+			return -ENOTTY;
+		}
 
 		handle = ion_alloc(client, data.allocation.len,
 						data.allocation.align,
