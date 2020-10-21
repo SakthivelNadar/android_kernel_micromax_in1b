@@ -339,6 +339,7 @@ int vcu_ipi_register(struct platform_device *pdev,
 		mutex_unlock(&vcu->vcu_mutex[i]);
 		return 0;
 	}
+	mutex_unlock(&vcu->vcu_mutex[i]);
 
 	mutex_unlock(&vcu->vcu_mutex[i]);
 	dev_err(&pdev->dev, "register vcu ipi id %d with invalid arguments\n",

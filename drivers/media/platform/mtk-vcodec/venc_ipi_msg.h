@@ -56,6 +56,7 @@ enum venc_ipi_msg_id {
 	VCU_IPIMSG_ENC_PUT_BUFFER
 };
 
+
 /* enum venc_get_param_type - The type of set parameter used in
  *                            venc_if_get_param()
  * GET_PARAM_CAPABILITY_SUPPORTED_FORMATS: get codec supported format capability
