@@ -36,6 +36,7 @@
 
 #define CODEC_MAX_BUFFER 512U
 #define CODEC_ALLOCATE_MAX_BUFFER_SIZE 0x8000000UL /*128MB*/
+#define CODEC_MSK(addr) ((addr >> PAGE_SHIFT) & 0xFFFF)
 
 /**
  * struct mtk_vcu_mem - memory buffer allocated in kernel
