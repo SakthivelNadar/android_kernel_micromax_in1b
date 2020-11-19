@@ -82,7 +82,9 @@ static PHYS_HEAP_CONFIG         gsPhysHeapConfig;
 
 
 #if defined(CONFIG_MACH_MT6761)
-struct page* (*pfnAllocPage)(gfp_t gfp_flags, IMG_UINT32 ui32Order);
+/* pfnAllocPage can be overriden by gpu_fw_memory_init if condition met */
+struct page* (*pfnAllocPage)(gfp_t gfp_flags, IMG_UINT32 ui32Order)
+	= OSAllocPagesSafe;
 struct reserved_mem gpu_fw_rmem;
 static int __init gpu_fw_memory_init(struct reserved_mem *rmem)
 {
