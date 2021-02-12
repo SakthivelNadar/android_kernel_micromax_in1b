@@ -244,13 +244,6 @@
 		#size-cells = <2>;
 		ranges;
 
-		zmc-default {
-			compatible = "mediatek,zone_movable_cma";
-			size = <0 0x10000000>;
-			alignment = <0 0x1000000>;
-			alloc-ranges = <0 0x0 1 0x00000000>;
-		};
-
 		reserve-memory-sspm_share {
 			compatible = "mediatek,reserve-memory-sspm_share";
 			no-map;
@@ -2686,10 +2679,8 @@
 		compatible = "mediatek,ccu";
 		reg = <0 0x1a0b1000 0 0x1000>;
 		interrupts = <GIC_SPI 246 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&camsys CLK_CAM_CCU>,
-			<&scpsys SCP_SYS_CAM>;
-		clock-names = "CCU_CLK_CAM_CCU",
-			"CAM_PWR";
+		clocks = <&camsys CLK_CAM_CCU>, <&scpsys SCP_SYS_CAM>;
+		clock-names = "CCU_CLK_CAM_CCU","CAM_PWR";		
 	};
 
 	mt_charger: mt_charger {
@@ -2709,7 +2700,7 @@
 		usb_charger_current = <500000>;
 		ac_charger_current = <2050000>;
 		ac_charger_input_current = <3200000>;
-		non_std_ac_charger_current = <500000>;
+		non_std_ac_charger_current = <2050000>;
 		charging_host_charger_current = <1500000>;
 		ta_ac_charger_current = <3000000>;
 		pd_charger_current = <500000>;
@@ -2734,7 +2725,7 @@
 		disable_pd_dual;
 
 		/* common */
-		battery_cv = <4350000>;
+		battery_cv = <4400000>;
 		max_charger_voltage = <6500000>;
 		min_charger_voltage = <4600000>;
 
@@ -2750,7 +2741,7 @@
 		usb_charger_current = <500000>;
 		ac_charger_current = <2050000>;
 		ac_charger_input_current = <3200000>;
-		non_std_ac_charger_current = <500000>;
+		non_std_ac_charger_current = <2050000>;
 		charging_host_charger_current = <1500000>;
 		apple_1_0a_charger_current = <650000>;
 		apple_2_1a_charger_current = <800000>;
@@ -2777,10 +2768,10 @@
 
 		/* battery temperature protection */
 		enable_min_charge_temp;
-		min_charge_temp = <0>;
-		min_charge_temp_plus_x_degree = <6>;
-		max_charge_temp = <50>;
-		max_charge_temp_minus_x_degree = <47>;
+		min_charge_temp = <(-15)>;
+		min_charge_temp_plus_x_degree = <(-5)>;
+		max_charge_temp = <57>;
+		max_charge_temp_minus_x_degree = <50>;
 
 		/* PE */
 		ta_12v_support;
@@ -2840,6 +2831,33 @@
 		ibus_err = <14>;
 		vsys_watt = <5000000>;
 	};
+	
+	psc5415e: psc5415e {
+		compatible = "mediatek,psc5415e";
+	};
+	
+	icnfpsensor:icnfpsensor{
+		compatible = "mediatek,icnfpsensor";
+	};
+	
+	fpsensor_finger:fpsensor_finger{
+		compatible = "mediatek,fingerprint";
+	};
+	
+	flashlights_aw3641e: flashlights_aw3641e {
+		compatible = "mediatek,flashlights_aw3641e";
+		decouple = <0>;
+		channel@1 {
+			type = <0>;
+			ct = <0>;
+			part = <0>;
+		};
+		channel@2 {
+			type = <0>;
+			ct = <1>;
+			part = <0>;
+		};
+	};
 
 	pd_adapter: pd_adapter {
 		compatible = "mediatek,pd_adapter";
@@ -2870,16 +2888,6 @@
 	odm: odm{
 		compatible = "simple-bus";
 		/* reserved for overlay by odm */
-	};
-
-	memory_ssmr_features: memory-ssmr-features {
-		compatible = "mediatek,memory-ssmr-features";
-		svp-size = <0 0x10000000>;
-		iris-recognition-size = <0 0>;
-		2d_fr-size = <0 0>;
-		tui-size = <0 0>;
-		wfd-size = <0 0>;
-		prot-sharedmem-size = <0 0>;
 	};
 
 	radio_md_cfg: radio_md_cfg {
@@ -3060,4 +3068,7 @@
 #include "mt6370_pd.dtsi"
 #ifdef CONFIG_CHARGER_RT9471
 #include "rt9471.dtsi"
+#endif
+#ifdef CONFIG_SPROCOMM_WUSB3801
+#include "wusb3801x.dtsi"
 #endif
