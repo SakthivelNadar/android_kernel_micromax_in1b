@@ -63,6 +63,21 @@
 #include "mtk-auddrv-gpio.h"
 #include "mtk-soc-analog-type.h"
 #include "mtk-soc-codec-63xx.h"
+
+#ifdef CONFIG_SND_SOC_AW87XXX
+enum {
+	AW87XXX_OFF_MODE,
+	AW87XXX_MUSIC_MODE,
+	AW87XXX_VOICE_MODE,
+	AW87XXX_FM_MODE,
+	AW87XXX_RCV_MODE,
+	AW87XXX_MODE_MAX,
+};
+extern unsigned char aw87xxx_show_current_mode(int32_t channel);
+extern int aw87xxx_audio_scenne_load(uint8_t mode, int32_t channel);
+static int Voice_mode =0;
+#endif
+
 /* Use analog setting to do dc compensation */
 #define ANALOG_HPTRIM
 //#define ANALOG_HPTRIM_FOR_CUST
@@ -3623,14 +3638,25 @@ static void Ext_Speaker_Amp_Change(bool enable)
 	pr_debug("%s(), enable %d\n", __func__, enable);
 #define SPK_WARM_UP_TIME        (25)	/* unit is ms */
 	if (enable) {
+#ifdef CONFIG_SND_SOC_AW87XXX
+		if(Voice_mode == 1)
+		aw87xxx_audio_scenne_load(AW87XXX_VOICE_MODE,0);
+		else
+		aw87xxx_audio_scenne_load(AW87XXX_MUSIC_MODE,0);
+#else
 		AudDrv_GPIO_EXTAMP_Select(false, 3);
 		/*udelay(1000); */
 		usleep_range(1 * 1000, 2 * 1000);
 		AudDrv_GPIO_EXTAMP_Select(true, 3);
 		usleep_range(5 * 1000, 10 * 1000);
+#endif
 	} else {
+#ifdef CONFIG_SND_SOC_AW87XXX
+		aw87xxx_audio_scenne_load(AW87XXX_OFF_MODE,0);
+#else
 		AudDrv_GPIO_EXTAMP_Select(false, 3);
 		udelay(500);
+#endif
 	}
 }
 static int Ext_Speaker_Amp_Get(struct snd_kcontrol *kcontrol,
@@ -3660,6 +3686,36 @@ static int Ext_Speaker_Amp_Set(struct snd_kcontrol *kcontrol,
 	}
 	return 0;
 }
+
+#ifdef CONFIG_SND_SOC_AW87XXX
+static int Speaker_Voice_Get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	/* pr_debug("%s()\n", __func__); */
+	ucontrol->value.integer.value[0] =
+		mCodec_data->mAudio_Ana_DevicePower
+			[AUDIO_ANALOG_DEVICE_SPEAKER_VOICE_SWITCH];
+	return 0;
+}
+static int Speaker_Voice_Set(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s() gain = %ld\n ", __func__, ucontrol->value.integer.value[0]);
+	if (ucontrol->value.integer.value[0]){
+		Voice_mode =1 ;
+		mCodec_data->mAudio_Ana_DevicePower
+			[AUDIO_ANALOG_DEVICE_SPEAKER_VOICE_SWITCH] =
+		    ucontrol->value.integer.value[0];
+	} else {
+		mCodec_data->mAudio_Ana_DevicePower
+			[AUDIO_ANALOG_DEVICE_SPEAKER_VOICE_SWITCH] =
+		    ucontrol->value.integer.value[0];
+		Voice_mode =0;
+	}
+	return 0;
+}
+#endif
+
 static void Receiver_Speaker_Switch_Change(bool enable)
 {
 #ifndef CONFIG_FPGA_EARLY_PORTING
@@ -4366,6 +4422,11 @@ static const struct snd_kcontrol_new mt6357_snd_controls[] = {
 	SOC_ENUM_EXT("Ext_Speaker_Amp_Switch", Audio_DL_Enum[11],
 		     Ext_Speaker_Amp_Get,
 		     Ext_Speaker_Amp_Set),
+#ifdef CONFIG_SND_SOC_AW87XXX
+	SOC_ENUM_EXT("Speaker_Voice_Switch", Audio_DL_Enum[11],
+		     Speaker_Voice_Get,
+		     Speaker_Voice_Set),
+#endif
 	SOC_ENUM_EXT("Receiver_Speaker_Switch", Audio_DL_Enum[11],
 		     Receiver_Speaker_Switch_Get,
 		     Receiver_Speaker_Switch_Set),

@@ -1119,4 +1119,16 @@ config SND_SOC_RT5509
 	depends on I2C
 	select RT_REGMAP
 
+config SND_SMARTPA_AW8898
+	tristate "SoC Audio for awinic aw8898 series"
+	depends on I2C
+	help
+ 	This option enables support for aw8898 series Smart PA.
+
+config SND_SMARTPA_AW87519
+	tristate "SoC Audio for awinic aw87519 series"
+	depends on I2C
+	help
+ 	This option enables support for aw87519 series Smart PA.
+
 endmenu

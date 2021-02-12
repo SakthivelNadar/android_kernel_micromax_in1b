@@ -457,6 +457,9 @@ obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
 obj-$(CONFIG_SND_SOC_RT5509)	+= snd-soc-rt5509.o
 obj-$(CONFIG_SND_SOC_MT6660)	+= snd-soc-mt6660.o
 
+obj-$(CONFIG_SND_SMARTPA_AW8898) += aw8898/
+obj-$(CONFIG_SND_SMARTPA_AW87519) += aw87519/
+
 ifeq ($(CONFIG_SND_SOC_MT6358),y)
   MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
   subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
