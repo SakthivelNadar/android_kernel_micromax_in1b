@@ -159,3 +159,11 @@ config MTK_DISPLAY_LOW_MEMORY_DEBUG_SUPPORT
 	  If enable this option, display some debug buffer will be reduced or closed.
 	  If you want to use Meditek display low memory debug, please make sure it is Y in xxx_defconfig.mk.
 	  If unsure, set N.
+
+config SPROCOMM_ILI9882_NEED_SHUTDOWN_BEFORE_POWEROFF
+	bool "ili9882 shutdown before handset poweroff"
+	default n
+
+config SPROCOMM_FT8006_NEED_SHUTDOWN_BEFORE_POWEROFF
+	bool "ft8006 shutdown before handset poweroff"
+	default n

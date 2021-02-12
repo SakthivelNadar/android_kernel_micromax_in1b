@@ -23,8 +23,7 @@
 char mtk_ccm_name[camera_info_size] = { 0 };
 char mtk_i2c_dump[camera_info_size] = { 0 };
 
-
-
+char sprocomm_camera_info[camera_info_size] = { 0 };
 
 static int pdaf_type_info_read(struct seq_file *m, void *v)
 {
@@ -412,6 +411,18 @@ static int imgsensor_proc_status_open(struct inode *inode, struct file *file)
 	return single_open(file, imgsensor_proc_status_read, NULL);
 };
 
+static int subsys_sprocomm_camera_info_read(struct seq_file *m, void *v)
+{
+	pr_debug("%s %s\n", __func__, sprocomm_camera_info);
+	seq_printf(m, "%s\n", sprocomm_camera_info);
+	return 0;
+};
+
+static int proc_sprocomm_camera_info_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, subsys_sprocomm_camera_info_read, NULL);
+};
+
 static const struct file_operations fcamera_proc_fops_status = {
 	.owner = THIS_MODULE,
 	.open = imgsensor_proc_status_open,
@@ -460,7 +471,11 @@ static const struct file_operations fcamera_proc_fops_set_pdaf_type = {
 	.write = proc_SensorType_write
 };
 
-
+static const struct file_operations fcamera_proc_fops_get_camera_info = {
+        .owner = THIS_MODULE,
+        .read = seq_read,
+        .open = proc_sprocomm_camera_info_open,
+};
 
 enum IMGSENSOR_RETURN imgsensor_proc_init(void)
 {
@@ -476,6 +491,8 @@ enum IMGSENSOR_RETURN imgsensor_proc_init(void)
 
 	/* Camera information */
 	proc_create(PROC_CAMERA_INFO, 0664, NULL, &fcamera_proc_fops1);
+	/* Camera module information */
+	proc_create("Sprocomm_CamInfo", 0664, NULL, &fcamera_proc_fops_get_camera_info);
 
 	return IMGSENSOR_RETURN_SUCCESS;
 }

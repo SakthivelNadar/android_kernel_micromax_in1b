@@ -184,7 +184,7 @@ void AFRegulatorCtrl(int Stage)
 					regVCAMAF = regulator_get(lens_device,
 								  "vldo28");
 				else {
-					#if defined(CONFIG_MACH_MT6761)
+					#if defined(CONFIG_MACH_MT6761) || defined(CONFIG_MACH_MT6765)//wxs add for ldo control 20200803
 					regVCAMAF = regulator_get(lens_device,
 								  "vldo28");
 					#else

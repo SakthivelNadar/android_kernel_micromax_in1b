@@ -95,17 +95,17 @@ const struct flashlight_device_id flashlight_id[] = {
 	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
 	{0, 0, 0, "flashlights-sywt78", 0, 0},
 };
+#elif defined(CONFIG_MTK_FLASHLIGHT_AW3641E)
+const struct flashlight_device_id flashlight_id[] = {
+	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
+	{0, 0, 0, "flashlights-aw3641e", 0, 0},
+};
 #else
 const struct flashlight_device_id flashlight_id[] = {
 	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
-	{0, 0, 0, "flashlights-none", -1, 0},
-	{0, 1, 0, "flashlights-none", -1, 0},
-	{1, 0, 0, "flashlights-none", -1, 0},
-	{1, 1, 0, "flashlights-none", -1, 0},
-	{0, 0, 1, "flashlights-none", -1, 0},
-	{0, 1, 1, "flashlights-none", -1, 0},
-	{1, 0, 1, "flashlights-none", -1, 0},
-	{1, 1, 1, "flashlights-none", -1, 0},
+	{0, 0, 0, "flashlights-sgm3784", 0, 0},
+	{0, 1, 0, "flashlights-sgm3784", 1, 0},
+
 };
 #endif
 

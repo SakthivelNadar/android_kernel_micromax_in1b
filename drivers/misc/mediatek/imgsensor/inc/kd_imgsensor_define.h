@@ -608,7 +608,9 @@ struct ACDK_SENSOR_INFO_STRUCT {
 	MUINT16 SensorHorFOV;
 	MUINT16 SensorVerFOV;
 	MUINT16 SensorOrientation;
+	char *SensorModuleName;
 	MUINT32 SensorModuleID;
+	MUINT32 SensorOtpID;
 };
 
 #define ACDK_SENSOR_INFO2_STRUCT struct ACDK_SENSOR_INFO_STRUCT

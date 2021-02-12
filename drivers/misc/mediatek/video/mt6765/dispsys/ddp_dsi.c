@@ -3386,29 +3386,27 @@ int DSI_Send_ROI(enum DISP_MODULE_ENUM module, void *handle, unsigned int x,
 
 static void lcm_set_reset_pin(UINT32 value)
 {
-#if 1
+#if 0
 	DSI_OUTREG32(NULL, DISP_REG_CONFIG_MMSYS_LCM_RST_B, value);
 #else
-#if !defined(CONFIG_MTK_LEGACY)
 	if (value)
 		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCM_RST_OUT1);
 	else
 		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCM_RST_OUT0);
 #endif
-#endif
 }
 
 static void lcm1_set_reset_pin(UINT32 value)
 {
-	if (value)
-		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCM1_RST_OUT1);
-	else
-		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCM1_RST_OUT0);
+	//if (value)
+	//	disp_dts_gpio_select_state(DTS_GPIO_STATE_LCM1_RST_OUT1);
+	//else
+	//	disp_dts_gpio_select_state(DTS_GPIO_STATE_LCM1_RST_OUT0);
 }
 
 static void lcm1_set_te_pin(void)
 {
-	disp_dts_gpio_select_state(DTS_GPIO_STATE_TE1_MODE_TE);
+	//disp_dts_gpio_select_state(DTS_GPIO_STATE_TE1_MODE_TE);
 }
 
 static void lcm_udelay(UINT32 us)
@@ -3582,8 +3580,23 @@ long lcd_enp_bias_setting(unsigned int value)
 {
 	long ret = 0;
 
+	if (value)
+		ret = disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENP1);
+	else
+		ret = disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENP0);
 	return ret;
 }
+
+long lcd_enn_bias_setting(unsigned int value)
+{
+	long ret = 0;
+	if (value)
+		ret = disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENN1);
+	else
+		ret = disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENN0);
+	return ret;
+}
+
 
 int ddp_dsi_set_lcm_utils(enum DISP_MODULE_ENUM module,
 	struct LCM_DRIVER *lcm_drv)
@@ -3607,6 +3620,8 @@ int ddp_dsi_set_lcm_utils(enum DISP_MODULE_ENUM module,
 	}
 
 	utils->set_reset_pin = lcm_set_reset_pin;
+	utils->set_gpio_lcd_enp_bias = lcd_enp_bias_setting;
+	utils->set_gpio_lcd_enn_bias = lcd_enn_bias_setting;
 	utils->udelay = lcm_udelay;
 	utils->mdelay = lcm_mdelay;
 	utils->set_te_pin = NULL;

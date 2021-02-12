@@ -81,6 +81,11 @@
 #include "smi_public.h"
 #endif
 
+#define LCD_PROC_INFO
+#ifdef LCD_PROC_INFO
+#include <linux/proc_fs.h>  /*proc*/
+#endif
+
 /* static variable */
 static u32 MTK_FB_XRES;
 static u32 MTK_FB_YRES;
@@ -2470,6 +2475,79 @@ static struct fb_info *allocate_fb_by_index(struct device *dev)
 }
 #endif
 
+#ifdef LCD_PROC_INFO
+#define LCD_PROC_BUFFER_MAX_SIZE       512
+unsigned char lcd_proc_buffer[LCD_PROC_BUFFER_MAX_SIZE]={0};
+unsigned char lcd_module_buffer[LCD_PROC_BUFFER_MAX_SIZE]={0};
+unsigned char lcd_glass_buffer[LCD_PROC_BUFFER_MAX_SIZE]={0};
+
+#ifdef CONFIG_TOUCHSCREEN_ILI988X_INCELL
+extern char ilitek_get_vendor_id(void);
+#endif
+
+static int fix_lcd_proc_info(void)
+{
+	int i = 0;
+	int len = 0;
+#ifdef CONFIG_TOUCHSCREEN_ILI988X_INCELL
+	unsigned int version_id = 0;
+#endif
+	char *lcd_name[3] = {"ili9882h_720x1600_incell", "ft8006_720x1600_incell"};
+
+	len = sizeof(mtkfb_lcm_name)/sizeof(char);
+	if (0 == len) return -1;
+	for (i=0; i<len; i++){
+		if (('_' != mtkfb_lcm_name[i])&&('\0' != mtkfb_lcm_name[i]))
+			lcd_module_buffer[i] = mtkfb_lcm_name[i];
+		else
+			break;
+	}
+
+	if (!strcmp(mtkfb_lcm_name, lcd_name[0])) {
+
+#ifdef CONFIG_TOUCHSCREEN_ILI988X_INCELL
+		version_id = ilitek_get_vendor_id();
+		if (version_id == 0x11)
+			strcpy(lcd_proc_buffer, "HUAXIAN");
+		else if (version_id == 0x21)
+			strcpy(lcd_proc_buffer, "GUOXIAN");
+#endif
+		strcpy(lcd_module_buffer, "ILI9882H");
+		strcpy(lcd_glass_buffer, "PANDA");
+	} else if (!strcmp(mtkfb_lcm_name, lcd_name[1])) {
+		//id = get_lcd_vol_from_lk();
+		strcpy(lcd_proc_buffer, "GUOXIAN");
+		strcpy(lcd_module_buffer, "FT8006S");
+		strcpy(lcd_glass_buffer, "PANDA");
+	} else {
+		strcpy(lcd_proc_buffer, "XXX");
+		strcpy(lcd_module_buffer, "XXX");
+		strcpy(lcd_glass_buffer, "XXX");
+	}
+	return 0;
+}
+
+static int subsys_sprocomm_lcd_info_read(struct seq_file *m, void *v)
+{
+	fix_lcd_proc_info();
+	DISPMSG("%s:%s:%s\n", __func__, lcd_proc_buffer,lcd_module_buffer,lcd_glass_buffer);
+	seq_printf(m, "%s:%s:%s\n", lcd_proc_buffer,lcd_module_buffer,lcd_glass_buffer);
+	return 0;
+};
+
+static int proc_sprocomm_lcd_info_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, subsys_sprocomm_lcd_info_read, NULL);
+};
+
+static const struct file_operations lcd_proc_info_fops = {
+        .owner = THIS_MODULE,
+        .read = seq_read,
+        .open = proc_sprocomm_lcd_info_open,
+};
+
+#endif
+
 static int mtkfb_probe(struct platform_device *pdev)
 {
 	struct mtkfb_device *fbdev = NULL;
@@ -2657,6 +2735,10 @@ static int mtkfb_probe(struct platform_device *pdev)
 			MD_DISPLAY_DYNAMIC_MIPI, mipi_clk_change);
 	}
 
+#ifdef LCD_PROC_INFO
+	proc_create("Sprocomm_LcdInfo", 0664, NULL, &lcd_proc_info_fops);
+#endif
+
 	MSG_FUNC_LEAVE();
 	pr_info("disp driver(2) mtkfb_probe end\n");
 	return 0;
@@ -2708,8 +2790,24 @@ static int mtkfb_resume(struct platform_device *pdev)
 	return 0;
 }
 
+#if defined(CONFIG_SPROCOMM_ILI9882_NEED_SHUTDOWN_BEFORE_POWEROFF)
+extern void ili9882_shutdown_power(void);
+#endif
+
+#if defined(CONFIG_SPROCOMM_FT8006_NEED_SHUTDOWN_BEFORE_POWEROFF)
+extern void ft8006_shutdown_power(void);
+#endif
+
 static void mtkfb_shutdown(struct platform_device *pdev)
 {
+	#if defined(CONFIG_SPROCOMM_ILI9882_NEED_SHUTDOWN_BEFORE_POWEROFF)
+	ili9882_shutdown_power();
+	#endif
+
+	#if defined(CONFIG_SPROCOMM_FT8006_NEED_SHUTDOWN_BEFORE_POWEROFF)
+	ft8006_shutdown_power();
+	#endif
+
 	MTKFB_LOG("[FB Driver] mtkfb_shutdown()\n");
 	/* mt65xx_leds_brightness_set(MT65XX_LED_TYPE_LCD, LED_OFF); */
 	if (!lcd_fps)

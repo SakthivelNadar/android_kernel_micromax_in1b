@@ -90,7 +90,7 @@ static int handle_nonpreempt_rpc(struct smc_param *p)
 		return 0;
 	}
 
-	if (func_id != T6SMC_RPC_NONPREEMPT_CMD)
+	if ((func_id & 0xff) != T6SMC_RPC_NONPREEMPT_CMD)
 		return 1;
 
 	switch (T6SMC_RPC_NONPREEMPT_GET_FUNC(p->a0)) {

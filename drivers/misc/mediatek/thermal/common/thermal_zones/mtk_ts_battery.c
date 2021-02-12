@@ -135,7 +135,7 @@ static int polling_factor2 = 10000;
 
 /* static int battery_write_flag=0; */
 
-#define mtktsbattery_TEMP_CRIT 60000	/* 60.000 degree Celsius */
+#define mtktsbattery_TEMP_CRIT 80000	/* 80.000 degree Celsius */
 
 #define mtktsbattery_dprintk(fmt, args...)   \
 do {                                    \
@@ -466,7 +466,7 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
-		BUG();
+		//BUG();
 	}
 	return 0;
 }

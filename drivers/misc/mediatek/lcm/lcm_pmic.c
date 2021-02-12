@@ -52,16 +52,21 @@ int display_bias_enable(void)
 {
 	int ret = 0;
 	int retval = 0;
+	int vol = 5400000;
 
 	display_bias_regulator_init();
+	
+#ifdef CONFIG_SPROCOMM_DSV_VOL //wang add 20191029, set +/- 5v
+	ret = kstrtoint(CONFIG_SPROCOMM_DSV_VOL, 10, &vol);
+#endif
 
 	/* set voltage with min & max*/
-	ret = regulator_set_voltage(disp_bias_pos, 5400000, 5400000);
+	ret = regulator_set_voltage(disp_bias_pos, vol, vol);
 	if (ret < 0)
 		pr_info("set voltage disp_bias_pos fail, ret = %d\n", ret);
 	retval |= ret;
 
-	ret = regulator_set_voltage(disp_bias_neg, 5400000, 5400000);
+	ret = regulator_set_voltage(disp_bias_neg, vol, vol);
 	if (ret < 0)
 		pr_info("set voltage disp_bias_neg fail, ret = %d\n", ret);
 	retval |= ret;

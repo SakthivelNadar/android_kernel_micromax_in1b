@@ -28,6 +28,10 @@ enum LCM_DSI_MODE_CON lcm_dsi_mode;
 #define LCD_HW_ID_STATUS_ERROR  0x03
 
 struct LCM_DRIVER *lcm_driver_list[] = {
+#if defined(JD9365Z_HD720_PLUS)
+	&jd9365z_hd720_plus_drv,
+#endif
+
 #if defined(NT36672AH_HDP_DSI_VDO_TCL_CSOT)
 	&nt36672ah_hdp_dsi_vdo_tcl_csot_lcm_drv,
 #endif
@@ -1176,6 +1180,18 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 
 #if defined(OPPO_TIANMA_TD4310_FHDP_DSI_VDO_RT5081)
 	&oppo_tianma_td4310_fhdp_dsi_vdo_rt5081_lcm_drv,
+#endif
+
+#if defined(ILI9882H_720X1600_INCELL)
+	&ili9882h_720x1600_incell_drv,
+#endif
+
+#if defined(FT8006_720X1600_INCELL)
+	&ft8006_720x1600_incell_drv,
+#endif
+
+#if defined(FT8006_720X1600_INCELL_PD6511)
+	&ft8006_720x1600_incell_pd6511_drv,
 #endif
 };
 

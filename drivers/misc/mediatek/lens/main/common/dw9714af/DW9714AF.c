@@ -38,12 +38,10 @@
 static struct i2c_client *g_pstAF_I2Cclient;
 static int *g_pAF_Opened;
 static spinlock_t *g_pAF_SpinLock;
-
 static unsigned long g_u4AF_INF;
 static unsigned long g_u4AF_MACRO = 1023;
 static unsigned long g_u4CurrPosition;
 
-#if 0
 static int s4AF_ReadReg(unsigned short *a_pu2Result)
 {
 	int i4RetValue = 0;
@@ -64,14 +62,34 @@ static int s4AF_ReadReg(unsigned short *a_pu2Result)
 
 	return 0;
 }
-#endif
 
-static int s4AF_WriteReg(u16 a_u2Data)
+static int s4AF_WriteReg_MV(u16 a_u2Data)
 {
 	int i4RetValue = 0;
 
 	char puSendCmd[2] = {(char)(a_u2Data >> 4),
 			     (char)((a_u2Data & 0xF) << 4)};
+
+	g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
+
+	g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;
+
+	i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
+
+	if (i4RetValue < 0) {
+		LOG_INF("I2C send failed!!\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int s4AF_WriteReg(u16 a_u2Data)
+{
+	int i4RetValue = 0;
+
+	char puSendCmd[2] = {(char)((a_u2Data & 0xff00) >> 8),
+			     (char)((a_u2Data & 0x00ff))};
 
 	g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
 
@@ -132,7 +150,7 @@ static inline int moveAF(unsigned long a_u4Position)
 {
 	int ret = 0;
 
-	if (s4AF_WriteReg((unsigned short)a_u4Position) == 0) {
+	if (s4AF_WriteReg_MV((unsigned short)a_u4Position) == 0) {
 		g_u4CurrPosition = a_u4Position;
 		ret = 0;
 	} else {
@@ -197,13 +215,26 @@ long DW9714AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 /* 2.Shut down the device on last close. */
 /* 3.Only called once on last time. */
 /* Q1 : Try release multiple times. */
+#define DW9714AF_SHUTDOWN_STEP 2
+
 int DW9714AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 {
-	LOG_INF("Start\n");
+	u16 reg = 0;
 
 	if (*g_pAF_Opened == 2) {
-		LOG_INF("Wait\n");
-		s4AF_WriteReg(0x80); /* Power down mode */
+		s4AF_ReadReg(&reg);
+		LOG_INF("Wait reg:%d\n",reg);
+		while(reg > DW9714AF_SHUTDOWN_STEP)
+		{
+			if(reg <= DW9714AF_SHUTDOWN_STEP)
+				break;
+				
+			reg = reg - DW9714AF_SHUTDOWN_STEP;
+			s4AF_WriteReg_MV(reg);
+		}
+		
+		s4AF_WriteReg(0x8000); /* Power down mode */
+		mdelay(5);
 	}
 
 	if (*g_pAF_Opened) {

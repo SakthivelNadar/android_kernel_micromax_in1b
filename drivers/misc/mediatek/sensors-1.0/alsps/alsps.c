@@ -113,10 +113,13 @@ int rgbw_flush_report(void)
 	return err;
 }
 
+int psensor_flag = 2;
 int ps_data_report(int value, int status)
 {
 	int err = 0;
 	struct sensor_event event;
+	psensor_flag = value;
+
 
 	memset(&event, 0, sizeof(struct sensor_event));
 
@@ -286,7 +289,7 @@ static struct alsps_context *alsps_context_alloc_object(void)
 	atomic_set(&obj->delay_als,
 		   200); /*5Hz, set work queue delay time 200ms */
 	atomic_set(&obj->delay_ps,
-		   200); /* 5Hz,  set work queue delay time 200ms */
+		   50); /* 5Hz,  set work queue delay time 200ms */
 	atomic_set(&obj->wake, 0);
 	INIT_WORK(&obj->report_als, als_work_func);
 	INIT_WORK(&obj->report_ps, ps_work_func);
@@ -724,7 +727,10 @@ static ssize_t ps_store_active(struct device *dev,
 	if (!strncmp(buf, "1", 1))
 		cxt->ps_enable = 1;
 	else if (!strncmp(buf, "0", 1))
+	{
+		psensor_flag = 2;
 		cxt->ps_enable = 0;
+	}
 	else {
 		pr_err("%s error !!\n", __func__);
 		err = -1;
@@ -737,6 +743,7 @@ static ssize_t ps_store_active(struct device *dev,
 #endif
 err_out:
 	mutex_unlock(&alsps_context_obj->alsps_op_mutex);
+	psensor_flag = 2;
 	pr_debug("%s done\n", __func__);
 	if (err)
 		return err;

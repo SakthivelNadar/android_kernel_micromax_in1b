@@ -27,6 +27,8 @@
 extern char mtk_ccm_name[camera_info_size];
 extern struct IMGSENSOR *pgimgsensor;
 
+extern char sprocomm_camera_info[camera_info_size];
+
 enum IMGSENSOR_RETURN imgsensor_proc_init(void);
 #endif
 

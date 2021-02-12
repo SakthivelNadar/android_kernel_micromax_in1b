@@ -168,6 +168,17 @@ config MTK_FLASHLIGHT_DUMMY_GPIO
 
 	  Say M here if you want to compile this driver as a module.
 
+config MTK_FLASHLIGHT_SGM3784
+	tristate "Mediatek flashlight with driver IC (SGM3784)"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is for the flashlight driver IC (SGM3784).
+
+		Say Y here if you want a flashlight driver IC SGM3784.
+		Select this only if your board has this IC.
+
+		Say M here if you want to compile this driver as a module.	
 config MTK_FLASHLIGHT_DEBUG
 	bool "Mediatek flashlight debugging messages"
 	depends on MTK_FLASHLIGHT
@@ -212,3 +223,12 @@ config MTK_FLASHLIGHT_DLPT
 	  the current of battary dynamicly. It will start by request
 	  and notice user by kernel notifier.
 
+config MTK_FLASHLIGHT_WD3610
+	tristate "Mediatek flashlight wd3610 gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+
+config MTK_FLASHLIGHT_AW3641E
+	tristate "Mediatek flashlight aw3641e gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n

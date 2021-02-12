@@ -632,7 +632,7 @@ static int AF_i2c_probe(struct i2c_client *client,
 	spin_lock_init(&g_AF_SpinLock);
 
 #if !defined(CONFIG_MTK_LEGACY)
-	AFRegulatorCtrl(0);
+	//AFRegulatorCtrl(0);//wxs delete for assert 20200803
 #endif
 
 	LOG_INF("Attached!!\n");

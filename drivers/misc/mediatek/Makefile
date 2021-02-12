@@ -158,6 +158,7 @@ obj-$(CONFIG_MTK_USB2JTAG_SUPPORT) += usb2jtag/
 obj-$(CONFIG_MTK_WATCHPOINT) += watchpoint/
 
 obj-$(CONFIG_TRUSTKERNEL_TEE_SUPPORT) += tkcore/
+obj-$(CONFIG_SPROCOMM_WUSB3801)	+= usbchip/
 obj-y += perf/
 
 #io boost

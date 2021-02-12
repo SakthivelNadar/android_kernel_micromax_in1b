@@ -100,6 +100,7 @@ char *leds_name[MT65XX_LED_TYPE_TOTAL] = {
 };
 
 struct cust_mt65xx_led *pled_dtsi;
+static int sprocomm_curr_brightness = 255;
 /****************************************************************************
  * DEBUG MACROS
  ***************************************************************************/
@@ -877,10 +878,18 @@ int mt_mt65xx_led_set_cust(struct cust_mt65xx_led *cust, int level)
 	case MT65XX_LED_MODE_CUST_BLS_PWM:
 		if (strcmp(cust->name, "lcd-backlight") == 0)
 			bl_brightness_hal = level;
+			
+		if((sprocomm_curr_brightness == 0)&&(level > 0))
+			{
+				mdelay(50);
+				//printk("wxs delay 50ms for lcd data stable");
+			}
 #ifdef MET_USER_EVENT_SUPPORT
 		if (enable_met_backlight_tag())
 			output_met_backlight_tag(level);
 #endif
+
+		sprocomm_curr_brightness = level;
 		return ((cust_set_brightness) (cust->data)) (level);
 
 	case MT65XX_LED_MODE_NONE:

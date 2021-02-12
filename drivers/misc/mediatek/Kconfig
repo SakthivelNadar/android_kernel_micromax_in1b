@@ -233,6 +233,11 @@ config CUSTOM_KERNEL_IMGSENSOR
 	  CUSTOM_KERNEL_MAIN_BACKUP_IMGSENSOR, CUSTOM_KERNEL_SUB_IMGSENSOR,
 	  and CUSTOM_KERNEL_SUB_BACKUP_IMGSENSOR
 
+config SPROCOMM_DSV_VOL
+	string "Custom set DSV Vol"
+	help
+	  you can set the +/- 5V power of lcd.
+
 config MTK_SEC_VIDEO_PATH_SUPPORT
 	bool "Enable MTK Secure Video Path Support"
 	default n
@@ -417,6 +422,7 @@ source "drivers/misc/mediatek/usb2jtag/Kconfig"
 
 source "drivers/misc/mediatek/devmpu/Kconfig"
 source "drivers/misc/mediatek/xhci/Kconfig"
+source "drivers/misc/mediatek/usbchip/Kconfig"
 
 endmenu # Peripheral
 

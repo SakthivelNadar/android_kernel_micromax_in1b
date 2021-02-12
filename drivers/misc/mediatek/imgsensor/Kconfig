@@ -9,5 +9,9 @@ config MTK_CAMERA_VCAMIO_ON
 	default n
 	help
 	  Set Y to enable vcamio on
+	  
+config MAIN_MAIN2_SHARE_VDDIO
+	bool "camera and camera2 share use system vddio"
+	default n
 
 source "drivers/misc/mediatek/imgsensor/src/Kconfig"

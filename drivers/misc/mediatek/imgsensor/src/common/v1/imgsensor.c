@@ -55,6 +55,9 @@
 #include "imgsensor_clk.h"
 #include "imgsensor.h"
 
+char ModuleInfoStr[][20] = {"unknown","HongShi","SiJiChun","ChengXiangTong"};
+char OtpInfoStr[4][32] = {"otp_no","otp_ok1","otp_ok2","otp_ok"};
+
 #define PDAF_DATA_SIZE 4096
 
 #ifdef CONFIG_MTK_SMI_EXT
@@ -81,8 +84,6 @@ static DEFINE_MUTEX(gimgsensor_mutex);
 
 struct IMGSENSOR  gimgsensor;
 struct IMGSENSOR *pgimgsensor = &gimgsensor;
-
-
 
 DEFINE_MUTEX(pinctrl_mutex);
 
@@ -209,7 +210,7 @@ imgsensor_sensor_open(struct IMGSENSOR_SENSOR *psensor)
 			    psensor,
 			    psensor_inst->psensor_name,
 			    IMGSENSOR_HW_POWER_STATUS_OFF);
-
+			
 			pr_err("SensorOpen fail");
 		} else {
 			psensor_inst->state = IMGSENSOR_STATE_OPEN;
@@ -814,6 +815,7 @@ static inline int adopt_CAMERA_HW_GetInfo2(void *pBuf)
 	MSDK_SENSOR_CONFIG_STRUCT  *pConfig4 = NULL;
 	MSDK_SENSOR_RESOLUTION_INFO_STRUCT  *psensorResolution = NULL;
 	char *pmtk_ccm_name = NULL;
+	char *psprocomm_camera_info = NULL;
 
 	pSensorGetInfo = (struct IMAGESENSOR_GETINFO_STRUCT *)pBuf;
 	if (pSensorGetInfo == NULL ||
@@ -1009,6 +1011,9 @@ static inline int adopt_CAMERA_HW_GetInfo2(void *pBuf)
 	pSensorInfo->SensorVerFOV = pInfo->SensorVerFOV;
 	pSensorInfo->SensorHorFOV = pInfo->SensorHorFOV;
 	pSensorInfo->SensorOrientation = pInfo->SensorOrientation;
+	pSensorInfo->SensorModuleName = pInfo->SensorModuleName;
+	pSensorInfo->SensorModuleID = pInfo->SensorModuleID;
+	pSensorInfo->SensorOtpID = pInfo->SensorOtpID;
 
 	imgsensor_sensor_get_info(
 	    psensor,
@@ -1081,6 +1086,24 @@ static inline int adopt_CAMERA_HW_GetInfo2(void *pBuf)
 				"\n\nCAM_Info[%d]:%s;",
 				pSensorGetInfo->SensorId,
 				psensor->inst.psensor_name);
+
+	psprocomm_camera_info = strchr(sprocomm_camera_info, '\0');
+	if(pSensorGetInfo->SensorId == 0) {
+		snprintf(psprocomm_camera_info,
+			camera_info_size - (int)(psprocomm_camera_info - sprocomm_camera_info),
+				"Cam[%d]:%s:%s:%s;",
+				pSensorGetInfo->SensorId, pSensorInfo->SensorModuleName,
+				ModuleInfoStr[pSensorInfo->SensorModuleID],
+				OtpInfoStr[pSensorInfo->SensorOtpID]);
+	}
+	else {
+		snprintf(psprocomm_camera_info,
+			camera_info_size - (int)(psprocomm_camera_info - sprocomm_camera_info),
+				"\nCam[%d]:%s:%s:%s;",
+				pSensorGetInfo->SensorId, pSensorInfo->SensorModuleName,
+				ModuleInfoStr[pSensorInfo->SensorModuleID],
+				OtpInfoStr[pSensorInfo->SensorOtpID]);
+	}
 
 	pmtk_ccm_name = strchr(mtk_ccm_name, '\0');
 	snprintf(pmtk_ccm_name,
@@ -2650,22 +2673,34 @@ CAMERA_HW_Ioctl_EXIT:
 
 static int imgsensor_open(struct inode *a_pstInode, struct file *a_pstFile)
 {
-	if (atomic_read(&pgimgsensor->imgsensor_open_cnt) == 0)
-		imgsensor_clk_enable_all(&pgimgsensor->clk);
 
-	atomic_inc(&pgimgsensor->imgsensor_open_cnt);
-	pr_info(
-	    "%s %d\n",
-	    __func__,
-	    atomic_read(&pgimgsensor->imgsensor_open_cnt));
-	return 0;
+//    if (atomic_read(&pgimgsensor->imgsensor_open_cnt) == 0)
+//        imgsensor_clk_enable_all(&pgimgsensor->clk);
+
+//    atomic_inc(&pgimgsensor->imgsensor_open_cnt);
+    mutex_lock(&pgimgsensor->imgsensor_clk_mutex);
+   if (0 == pgimgsensor->imgsensor_open_cnt_mux)
+    {
+         imgsensor_clk_enable_all(&pgimgsensor->clk);
+    }
+    (pgimgsensor->imgsensor_open_cnt_mux)++;
+ 
+
+     pr_info( "new %s %d\n",__func__,(pgimgsensor->imgsensor_open_cnt_mux));
+
+    mutex_unlock(&pgimgsensor->imgsensor_clk_mutex);
+     return 0;
 }
 
 static int imgsensor_release(struct inode *a_pstInode, struct file *a_pstFile)
 {
 	enum IMGSENSOR_SENSOR_IDX i = IMGSENSOR_SENSOR_IDX_MIN_NUM;
-	atomic_dec(&pgimgsensor->imgsensor_open_cnt);
-	if (atomic_read(&pgimgsensor->imgsensor_open_cnt) == 0) {
+    //atomic_dec(&pgimgsensor->imgsensor_open_cnt);
+    //if (atomic_read(&pgimgsensor->imgsensor_open_cnt) == 0) {
+    mutex_lock(&pgimgsensor->imgsensor_clk_mutex);
+
+   (pgimgsensor->imgsensor_open_cnt_mux)--;
+    if (0  == pgimgsensor->imgsensor_open_cnt_mux) {
 		imgsensor_clk_disable_all(&pgimgsensor->clk);
 
 		if (pgimgsensor->imgsensor_oc_irq_enable != NULL) {
@@ -2678,10 +2713,9 @@ static int imgsensor_release(struct inode *a_pstInode, struct file *a_pstFile)
 		imgsensor_dfs_ctrl(DFS_RELEASE, NULL);
 #endif
 	}
-	pr_info(
-	    "%s %d\n",
-	    __func__,
-	    atomic_read(&pgimgsensor->imgsensor_open_cnt));
+	pr_info("new %s %d\n",__func__,(pgimgsensor->imgsensor_open_cnt_mux));
+    mutex_unlock(&pgimgsensor->imgsensor_clk_mutex);
+
 	return 0;
 }
 
@@ -2785,7 +2819,9 @@ static int imgsensor_probe(struct platform_device *pdev)
 	imgsensor_i2c_create();
 	imgsensor_proc_init();
 
-	atomic_set(&pgimgsensor->imgsensor_open_cnt, 0);
+//    atomic_set(&pgimgsensor->imgsensor_open_cnt, 0);
+    mutex_init(&pgimgsensor->imgsensor_clk_mutex);
+    pgimgsensor->imgsensor_open_cnt_mux = 0;
 #ifdef CONFIG_MTK_SMI_EXT
 	mmdvfs_register_mmclk_switch_cb(
 	    mmsys_clk_change_cb,

@@ -176,6 +176,13 @@ static enum IMGSENSOR_RETURN imgsensor_hw_power_sequence(
 	return IMGSENSOR_RETURN_SUCCESS;
 }
 
+static int curr_index = 0xff;
+
+int sprocomm_get_curr_camera_index(void)
+{
+	return 	curr_index;
+}
+
 enum IMGSENSOR_RETURN imgsensor_hw_power(
 	struct IMGSENSOR_HW     *phw,
 	struct IMGSENSOR_SENSOR *psensor,
@@ -213,6 +220,9 @@ enum IMGSENSOR_RETURN imgsensor_hw_power(
 	    pwr_status,
 	    sensor_power_sequence,
 	    curr_sensor_name);
+	    
+	if(pwr_status == IMGSENSOR_HW_POWER_STATUS_ON)
+		curr_index = sensor_idx;
 
 	return IMGSENSOR_RETURN_SUCCESS;
 }
