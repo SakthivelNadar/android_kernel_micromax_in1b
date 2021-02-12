@@ -34,6 +34,22 @@
 #define DEFAULT_CMD6_TIMEOUT_MS	500
 #define MIN_CACHE_EN_TIMEOUT_MS 1600
 
+#define MEM_PROC_INFO
+#ifdef MEM_PROC_INFO
+#include <linux/proc_fs.h>  /*proc*/
+#include <asm/uaccess.h>
+#endif
+
+#ifdef MEM_PROC_INFO
+struct memory_type {
+	char prod_name[6];
+	char chip_type[40];
+};
+static struct memory_type sprocomm_memtype[] = {
+	{"ISOCOM","ISOCOM NCLDXC2MG512M32/MEMA032G M0D01"},
+};
+#endif
+
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
 	0,		0,		0,		0
@@ -52,6 +68,115 @@ static const unsigned int tacc_mant[] = {
 	0,	10,	12,	13,	15,	20,	25,	30,
 	35,	40,	45,	50,	55,	60,	70,	80,
 };
+
+#ifdef MEM_PROC_INFO
+#define MEM_PROC_BUFFER_MAX_SIZE       256
+unsigned char mem_proc_buffer[MEM_PROC_BUFFER_MAX_SIZE]={0};
+
+static int fix_mem_proc_info(void *mem_data, u8 data_len)
+{
+	int ret = 0;
+
+	if (data_len > MEM_PROC_BUFFER_MAX_SIZE ||      data_len <=0 || mem_data ==NULL)
+		ret = -1;
+
+	memcpy(mem_proc_buffer, mem_data,data_len);
+	mem_proc_buffer[data_len] = '\0';
+
+	return 0;
+}
+
+static ssize_t sprocomm_read_mem_info(struct file *file, char *buffer, size_t count, loff_t *ppos)
+{
+	char *page = NULL;
+	char *ptr = NULL;
+	int len = 0;
+	int err = -1;
+
+	page = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!page){
+		kfree(page);
+		return -ENOMEM;
+	}
+
+	ptr = page;
+	ptr += sprintf(page, "%s", mem_proc_buffer);
+
+	len = ptr - page;
+	if(*ppos >= len){
+		kfree(page);
+		return 0;
+	}
+
+	err = copy_to_user(buffer,(char *)page,len);
+	*ppos += len;
+	if(err){
+		kfree(page);
+		return err;
+	}
+	kfree(page);
+	return len;
+}
+
+static const struct file_operations mem_proc_info_fops = {
+	.read = sprocomm_read_mem_info
+};
+
+static int sprocomm_creat_proc_mem_info(void)
+{
+	struct proc_dir_entry *mem_info_entry = NULL;
+
+	mem_info_entry = proc_create("Sprocomm_MemInfo", 0444, NULL, &mem_proc_info_fops);
+	if (mem_info_entry == NULL){
+		printk("Create sprocomm_memInfo fail\n");
+	}
+	return 0;
+
+}
+
+//wang add 20180612
+static int proc_cpuInfo_read(struct seq_file *m, void *v)
+{
+	char SPROCOMM_CPU_TYPE[20]="MT6765";
+
+	seq_printf(m, "CPU:%s\n", SPROCOMM_CPU_TYPE);
+
+	return 0;
+};
+
+static int proc_cpuInfo_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_cpuInfo_read, NULL);
+};
+
+static const struct file_operations proc_cpu_info_fops = {
+	.owner = THIS_MODULE,
+	.open = proc_cpuInfo_open,
+	.read = seq_read,
+};
+
+static int sprocomm_creat_proc_cpu_info(void)
+{
+	struct proc_dir_entry *cpu_info_entry = NULL;
+
+	cpu_info_entry = proc_create("Sprocomm_CpuInfo", 0444, NULL, &proc_cpu_info_fops);
+	if (cpu_info_entry == NULL) {
+		printk("Create sprocomm_cpuInfo fail\n");
+	}
+	return 0;
+}
+#endif
+
+
+#ifdef MTK_BKOPS_IDLE_MAYA
+#define MMC_UPDATE_BKOPS_STATS_SUSPEND(stats)\
+       do {\
+               spin_lock(&stats.lock);\
+               if (stats.enabled)\
+                       stats.suspend++;\
+               spin_unlock(&stats.lock);\
+       } while (0)
+#endif
 
 static const struct mmc_fixup mmc_ext_csd_fixups[] = {
 	/*
@@ -1740,6 +1865,25 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		if (err)
 			goto free_card;
 	}
+
+#ifdef MEM_PROC_INFO
+	sprocomm_creat_proc_mem_info();
+	if (0 != card->raw_cid[0]){
+		u32 i,count;
+		char buf[MEM_PROC_BUFFER_MAX_SIZE]={0};
+		count = sizeof(sprocomm_memtype)/sizeof(struct memory_type);
+		for(i = 0 ; i < count ; i++ ){
+			if(strncmp(sprocomm_memtype[i].prod_name,card->cid.prod_name,5) == 0)
+				 break;
+			}
+			if(i == count)
+				 sprintf(buf,"unknown!");
+			else
+				 sprintf(buf, "%s\n", sprocomm_memtype[i].chip_type);
+		fix_mem_proc_info(((void *)buf), 40);
+	}
+	sprocomm_creat_proc_cpu_info();
+#endif
 
 	/*
 	 * handling only for cards supporting DSR and hosts requesting

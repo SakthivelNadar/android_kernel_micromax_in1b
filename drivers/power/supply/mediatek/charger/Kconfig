@@ -143,3 +143,7 @@ config MTK_BQ25890_SUPPORT
 	  It also supports BC1.2 function.
 	  It depends on config MTK_CHARGER.
 	  Say yes to enable BQ25890 charger driver.
+
+config CHARGER_PSC5415E
+	bool "Charger Driver for Richtek PSC5415E Charger IC"
+	default n

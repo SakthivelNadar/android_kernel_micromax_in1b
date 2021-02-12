@@ -81,7 +81,7 @@
 #include "simulator_kernel.h"
 #endif
 
-
+extern int spro_get_curr_fixed_25_status(void);
 
 /* ============================================================ */
 /* global variable */
@@ -1966,6 +1966,14 @@ void fg_bat_temp_int_init(void)
 	fg_bat_new_lt = 1;
 	return;
 #else
+	if(spro_get_curr_fixed_25_status())
+	{
+		tmp = 1;
+		fg_bat_new_ht = 1;
+		fg_bat_new_lt = 1;
+		return;
+	}
+
 	tmp = force_get_tbat(true);
 
 	fg_bat_new_ht = TempToBattVolt(tmp + 1, 1);
@@ -1999,6 +2007,15 @@ void fg_bat_temp_int_internal(void)
 	fg_bat_new_lt = 1;
 	return;
 #else
+	if(spro_get_curr_fixed_25_status())
+	{
+		battery_main.BAT_batt_temp = 25;
+		battery_update(&battery_main);
+		tmp = 1;
+		fg_bat_new_ht = 1;
+		fg_bat_new_lt = 1;
+		return;
+	}
 	tmp = force_get_tbat(true);
 
 	gauge_dev_enable_battery_tmp_lt_interrupt(gm.gdev, false, 0);

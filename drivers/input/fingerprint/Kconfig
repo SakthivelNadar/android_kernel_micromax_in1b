@@ -4,6 +4,14 @@
 menu "Fingerprint support"
 	depends on INPUT
 
+config FPSENSOR_REE_FINGERPRINT
+    bool "fpsensor Fingerprint"
+    default n
+	
+config FPSENSOR_TEE_FINGERPRINT
+    bool "fpsensor Tee Fingerprint"
+    default n
+
 config SUNWAVE_TEE_FINGERPRINT
     bool "SW Fingerprint"
     default n

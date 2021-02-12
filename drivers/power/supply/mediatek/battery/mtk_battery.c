@@ -98,7 +98,8 @@ static struct class *adc_cali_class;
 static int adc_cali_major;
 static dev_t adc_cali_devno;
 static struct cdev *adc_cali_cdev;
-
+static int battery_fixed_25_flag = 0;
+int psensor_callflag = 0;
 static int adc_cali_slop[14] = {
 	1000, 1000, 1000, 1000, 1000, 1000,
 	1000, 1000, 1000, 1000, 1000, 1000,
@@ -123,7 +124,16 @@ static enum power_supply_property battery_props[] = {
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_CHARGE_NOW,
 };
+
+#define SPROCOMM_BATTERY_BASE_DIR_NAME	"Sprocomm_Battery"
+struct proc_dir_entry *sprocomm_battery_base;
+
+int spro_get_curr_fixed_25_status(void)
+{
+	return 	battery_fixed_25_flag;
+}
 
 /* weak function */
 int __attribute__ ((weak))
@@ -339,6 +349,19 @@ static int battery_get_property(struct power_supply *psy,
 		b_ischarging = gauge_get_current(&fgcurrent);
 		if (b_ischarging == false)
 			fgcurrent = 0 - fgcurrent;
+
+		val->intval = fgcurrent * 100;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+		b_ischarging = gauge_get_current(&fgcurrent);
+		if (b_ischarging == false)
+		{
+			fgcurrent = 0 - fgcurrent;
+		}
+		else
+		{
+			fgcurrent += 350;
+		}
 
 		val->intval = fgcurrent * 100;
 		break;
@@ -1072,7 +1095,7 @@ static ssize_t show_Battery_Temperature(
 	bm_err("%s: %d %d\n",
 		__func__,
 		battery_main.BAT_batt_temp, gm.fixed_bat_tmp);
-	return sprintf(buf, "%d\n", gm.fixed_bat_tmp);
+	return sprintf(buf, "%d\n", battery_main.BAT_batt_temp);
 }
 
 static ssize_t store_Battery_Temperature(
@@ -1143,6 +1166,62 @@ static DEVICE_ATTR(UI_SOC, 0664, show_UI_SOC,
 		   store_UI_SOC);
 
 
+static ssize_t show_fixed_tbat_25(
+	struct device *dev, struct device_attribute *attr,
+					       char *buf)
+{
+	return sprintf(buf, "%d\n", battery_fixed_25_flag);
+}
+
+static ssize_t store_fixed_tbat_25(
+	struct device *dev, struct device_attribute *attr,
+						const char *buf, size_t size)
+{
+	signed int temp;
+
+	if (kstrtoint(buf, 10, &temp) == 0) {
+
+		gm.fixed_uisoc = temp;
+
+		if(temp)
+			battery_fixed_25_flag = 1;
+		else
+			battery_fixed_25_flag = 0;
+	}
+
+	return size;
+}
+
+static DEVICE_ATTR(fixed_tbat_25, 0664, show_fixed_tbat_25, store_fixed_tbat_25);
+
+
+static ssize_t show_callflag(
+	struct device *dev, struct device_attribute *attr,
+					       char *buf)
+{
+	return sprintf(buf, "%d\n", psensor_callflag);
+}
+
+static ssize_t store_callflag(
+	struct device *dev, struct device_attribute *attr,
+						const char *buf, size_t size)
+{
+	signed int temp;
+
+	if (kstrtoint(buf, 10, &temp) == 0) {
+
+		//gm.fixed_uisoc = temp;
+
+		if(temp)
+			psensor_callflag = 1;
+		else
+			psensor_callflag = 0;
+	}
+
+	return size;
+}
+
+static DEVICE_ATTR(callflag, 0664, show_callflag, store_callflag);
 /* ============================================================ */
 /* Internal function */
 /* ============================================================ */
@@ -1190,15 +1269,15 @@ unsigned int TempConverBattThermistor(int temp)
 	int i;
 	unsigned int TBatt_R_Value = 0xffff;
 
-	if (temp >= Fg_Temperature_Table[20].BatteryTemp) {
-		TBatt_R_Value = Fg_Temperature_Table[20].TemperatureR;
+	if (temp >= Fg_Temperature_Table[24].BatteryTemp) {
+		TBatt_R_Value = Fg_Temperature_Table[24].TemperatureR;
 	} else if (temp <= Fg_Temperature_Table[0].BatteryTemp) {
 		TBatt_R_Value = Fg_Temperature_Table[0].TemperatureR;
 	} else {
 		RES1 = Fg_Temperature_Table[0].TemperatureR;
 		TMP1 = Fg_Temperature_Table[0].BatteryTemp;
 
-		for (i = 0; i <= 20; i++) {
+		for (i = 0; i < 25; i++) {
 			if (temp <= Fg_Temperature_Table[i].BatteryTemp) {
 				RES2 = Fg_Temperature_Table[i].TemperatureR;
 				TMP2 = Fg_Temperature_Table[i].BatteryTemp;
@@ -1231,13 +1310,13 @@ int BattThermistorConverTemp(int Res)
 
 	if (Res >= Fg_Temperature_Table[0].TemperatureR) {
 		TBatt_Value = -400;
-	} else if (Res <= Fg_Temperature_Table[20].TemperatureR) {
-		TBatt_Value = 600;
+	} else if (Res <= Fg_Temperature_Table[24].TemperatureR) {
+		TBatt_Value = 800;
 	} else {
 		RES1 = Fg_Temperature_Table[0].TemperatureR;
 		TMP1 = Fg_Temperature_Table[0].BatteryTemp;
 
-		for (i = 0; i <= 20; i++) {
+		for (i = 0; i < 25; i++) {
 			if (Res >= Fg_Temperature_Table[i].TemperatureR) {
 				RES2 = Fg_Temperature_Table[i].TemperatureR;
 				TMP2 = Fg_Temperature_Table[i].BatteryTemp;
@@ -1547,10 +1626,16 @@ int force_get_tbat(bool update)
 	gm.tbat_precise = 250;
 	return 25;
 #else
+	if(battery_fixed_25_flag)
+	{
+		bm_debug("[%s] fixed TBAT=25 t\n", __func__);
+		gm.tbat_precise = 250;
+		return 25;
+	}
 
 	bat_temperature_val = force_get_tbat_internal(update);
 
-	while (counts < 5 && bat_temperature_val >= 60) {
+	while (counts < 5 && bat_temperature_val >= 67) {
 		bm_err("[%s]over60 count=%d, bat_temp=%d\n",
 			__func__,
 			counts, bat_temperature_val);
@@ -3872,7 +3957,92 @@ static const struct file_operations adc_cali_fops = {
 	.release = adc_cali_release,
 };
 
+static int subsys_sprocomm_bat_temp_read(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", battery_main.BAT_batt_temp);
+	return 0;
+};
 
+static int proc_sprocomm_bat_temp_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, subsys_sprocomm_bat_temp_read, NULL);
+};
+
+static int subsys_sprocomm_bat_current_read(struct seq_file *m, void *v)
+{
+	int fgcurrent = 0;
+	bool b_ischarging = 0;
+	b_ischarging = gauge_get_current(&fgcurrent);
+	if (b_ischarging == false){
+		fgcurrent = 0 - fgcurrent;
+	}
+	else{
+		fgcurrent += 350;
+	}
+
+	seq_printf(m, "%d\n", fgcurrent * 100);
+	return 0;
+};
+
+static int proc_sprocomm_bat_current_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, subsys_sprocomm_bat_current_read, NULL);
+};
+
+static int subsys_sprocomm_fixed_tbat_25_read(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", battery_fixed_25_flag);
+	return 0;
+};
+
+static int proc_sprocomm_bat_fixed_tbat_25_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, subsys_sprocomm_fixed_tbat_25_read, NULL);
+};
+
+static ssize_t proc_sprocomm_bat_fixed_tbat_25_write(
+	struct file *file,
+	const char *buffer,
+	size_t count,
+	loff_t *data)
+{
+	char regBuf[64] = { '\0' };
+	signed int temp;
+	u32 u4CopyBufSize =
+		(count < (sizeof(regBuf) - 1)) ? (count) : (sizeof(regBuf) - 1);
+
+	if (copy_from_user(regBuf, buffer, u4CopyBufSize))
+		return -EFAULT;
+
+	if (kstrtoint(regBuf, 10, &temp) == 0) {
+		gm.fixed_uisoc = temp;
+		if(temp)
+			battery_fixed_25_flag = 1;
+		else
+			battery_fixed_25_flag = 0;
+	}
+
+	return count;
+};
+
+static const struct file_operations fbat_proc_fops_get_temp = {
+	.owner = THIS_MODULE,
+	.read = seq_read,
+	.open = proc_sprocomm_bat_temp_open,
+};
+
+static const struct file_operations fbat_proc_fops_get_current = {
+	.owner = THIS_MODULE,
+	.read = seq_read,
+	.open = proc_sprocomm_bat_current_open,
+};
+
+static const struct file_operations fbat_proc_fops_fixed_tbat_25 = {
+	.owner = THIS_MODULE,
+	.read = seq_read,
+	.open = proc_sprocomm_bat_fixed_tbat_25_open,
+	.write = proc_sprocomm_bat_fixed_tbat_25_write
+};
 /*************************************/
 static struct wakeup_source battery_lock;
 static int __init battery_probe(struct platform_device *dev)
@@ -3930,7 +4100,8 @@ static int __init battery_probe(struct platform_device *dev)
 #endif
 	ret = device_create_file(&(dev->dev), &dev_attr_Battery_Temperature);
 	ret = device_create_file(&(dev->dev), &dev_attr_UI_SOC);
-
+	ret = device_create_file(&(dev->dev), &dev_attr_fixed_tbat_25);
+    ret = device_create_file(&(dev->dev), &dev_attr_callflag);
 	/* sysfs node */
 	ret_device_file = device_create_file(&(dev->dev),
 		&dev_attr_uisoc_update_type);
@@ -3958,6 +4129,15 @@ static int __init battery_probe(struct platform_device *dev)
 		&dev_attr_reset_battery_cycle);
 	ret_device_file = device_create_file(&(dev->dev),
 		&dev_attr_reset_aging_factor);
+
+	sprocomm_battery_base = proc_mkdir(SPROCOMM_BATTERY_BASE_DIR_NAME, NULL);
+	if(sprocomm_battery_base == NULL){
+		printk("%s proc create %s failed\n", __func__, SPROCOMM_BATTERY_BASE_DIR_NAME);
+		return -EINVAL;
+	}
+	proc_create("temperature", 0664, sprocomm_battery_base, &fbat_proc_fops_get_temp);
+	proc_create("charge_now", 0664, sprocomm_battery_base, &fbat_proc_fops_get_current);
+	proc_create("fixed_tbat_25", 0664, sprocomm_battery_base, &fbat_proc_fops_fixed_tbat_25);
 
 	if (of_scan_flat_dt(fb_early_init_dt_get_chosen, NULL) > 0)
 		fg_swocv_v =
